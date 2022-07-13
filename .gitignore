@@ -2,6 +2,7 @@
 /imgs
 /OpenVINO
 /openvino_env
+/.idea
 
 # files
 utils
