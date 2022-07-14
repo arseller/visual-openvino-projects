@@ -3,6 +3,7 @@
 /OpenVINO
 /openvino_env
 /.idea
+/.ipynp_checkpoints
 
 # files
 utils
