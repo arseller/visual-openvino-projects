@@ -1,5 +1,7 @@
 # folder
 /imgs
+/model
+/models
 /OpenVINO
 /openvino_env
 /.idea

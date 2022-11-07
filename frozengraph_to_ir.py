@@ -1,6 +1,6 @@
 import os
 
-input_model_name = 'nofuzzy_model'
+input_model_name = 'detection_warning'
 
 input_model_path = f'models/{input_model_name}/frozen_graph/frozen_graph.pb'
 input_shape = '[1,224,224,3]'

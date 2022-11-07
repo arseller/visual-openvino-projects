@@ -3,7 +3,7 @@ import tensorflow as tf
 
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
 
-folder_name = 'nofuzzy_model'
+folder_name = 'detection_warning'
 # model path
 frozen_out_path = f'models/{folder_name}/frozen_graph'
 if not os.path.exists(frozen_out_path):
@@ -11,6 +11,10 @@ if not os.path.exists(frozen_out_path):
     print(f'{frozen_out_path} created')
 # name of the .pb file
 frozen_graph_filename = f'models/{folder_name}/frozen_graph'
+
+if not os.path.exists(f'cached_model'):
+    os.mkdir('cached_model')
+
 
 if not os.path.exists(f'{frozen_graph_filename}/frozen_graph.pb'):
 

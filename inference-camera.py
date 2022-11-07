@@ -12,7 +12,8 @@ settings = {
     'rgb': True,
     'model_name': 'glasses',
     'force_cpu': False,
-    'mean_horizon': 30
+    'mean_horizon': 30,
+    'stream_only': False
 }
 
 # set-up realsense stream
@@ -23,6 +24,13 @@ config = rs.config()
 config.enable_stream(rs.stream.infrared, 1, 640, 480, rs.format.y8, 30)
 config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 profile = pipeline.start(config)
+
+# images shape
+frames = pipeline.wait_for_frames()
+ir_frame = np.asanyarray(frames.get_infrared_frame(1).get_data())
+rgb_frame = np.asanyarray(frames.get_color_frame().get_data())
+print('\nFrames shape:')
+print('IR: ', ir_frame.shape, '\nRGB: ', rgb_frame.shape)
 
 # load openvino model
 runtime_device = 'CPU'
@@ -63,41 +71,42 @@ try:
         frames = pipeline.wait_for_frames()
         ir1_frame = frames.get_infrared_frame(1)
         rgb1_frame = frames.get_color_frame()
-        if not ir1_frame:
-            continue
         if rgb:
             np_image = np.asanyarray(rgb1_frame.get_data())
             stream = 'RGB'
         else:
-            np_image = np.asanyarray(ir1_frame.get_data())
+            np_image = np.expand_dims(np.asanyarray(ir1_frame.get_data()), -1)
+            np_image = cv2.cvtColor(np_image, cv2.COLOR_GRAY2RGB)
             stream = 'IR'
         _, f_width = np_image.shape[:2]
-        # prepare input data
-        resized_image = cv2.resize(src=np_image, dsize=(W, H))
-        input_data = np.expand_dims(resized_image, 0).astype(np.float32)
 
-        # model inference
-        start = time.time()
-        result = compiled_model([input_data])[output_layer]
-        stop = time.time()
+        if not settings['stream_only']:
+            # prepare input data
+            resized_image = cv2.resize(src=np_image, dsize=(W, H))
+            input_data = np.expand_dims(resized_image, 0).astype(np.float32)
 
-        # append prob and compute mean
-        prob = np.max(result)
-        probs.append(prob)
-        probs.popleft() if len(probs) > settings['mean_horizon'] else {}
-        mean_prob = np.mean(probs)
-        # compute mean prediction
-        result_index = np.argmax(result)
-        prediction = classes[result_index]
-        prediction = prediction.split()[-1]
-        predictions.append(prediction)
-        predictions.popleft() if len(predictions) > settings['mean_horizon'] else {}
-        mean_prediction = stats.mode(predictions)[0]
-        # get processing time and FPS
-        processing_times.append(stop - start)
-        processing_times.popleft() if len(processing_times) > 200 else {}
-        processing_time = np.mean(processing_times) * 1000
-        fps = 1000 / processing_time
+            # model inference
+            start = time.time()
+            result = compiled_model([input_data])[output_layer]
+            stop = time.time()
+
+            # append prob and compute mean
+            prob = np.max(result)
+            probs.append(prob)
+            probs.popleft() if len(probs) > settings['mean_horizon'] else {}
+            mean_prob = np.mean(probs)
+            # compute mean prediction
+            result_index = np.argmax(result)
+            prediction = classes[result_index]
+            prediction = prediction.split()[-1]
+            predictions.append(prediction)
+            predictions.popleft() if len(predictions) > settings['mean_horizon'] else {}
+            mean_prediction = stats.mode(predictions)[0]
+            # get processing time and FPS
+            processing_times.append(stop - start)
+            processing_times.popleft() if len(processing_times) > 200 else {}
+            processing_time = np.mean(processing_times) * 1000
+            fps = 1000 / processing_time
 
         # display camera data
         cv2.namedWindow(stream + ' stream', cv2.WINDOW_AUTOSIZE)
@@ -110,7 +119,7 @@ try:
             color=(0, 0, 255),
             thickness=1,
             lineType=cv2.LINE_AA
-        )
+        ) if not settings['stream_only'] else {}
         cv2.putText(
             img=np_image,
             text=f'Prediction: {mean_prediction} with prob {mean_prob:.2f}',
@@ -120,7 +129,7 @@ try:
             color=(0, 255, 0),
             thickness=1,
             lineType=cv2.LINE_AA
-        )
+        ) if not settings['stream_only'] else {}
         cv2.imshow(stream + ' stream', np_image)
         key = cv2.waitKey(1)
         # Press esc or 'q' to close the image window
