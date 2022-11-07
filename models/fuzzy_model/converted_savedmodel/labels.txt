@@ -1,3 +1,0 @@
-0 Normal
-1 Warning
-2 Allert

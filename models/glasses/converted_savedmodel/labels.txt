@@ -1,2 +1,0 @@
-0 glasses
-1 noGlasses
